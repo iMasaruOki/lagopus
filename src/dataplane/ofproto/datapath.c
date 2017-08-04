@@ -217,6 +217,12 @@ calc_l4_hash(const struct lagopus_packet *pkt, uint64_t hash64) {
         hash64 = calc_hash(&pkt->nd_tll[2], ETHER_ADDR_LEN, hash64);
       }
       break;
+    case IPPROTO_GRE:
+      hash64 = calc_hash(&pkt->gre->key, sizeof(uint32_t), hash64);
+      if (pkt->gre->ptype == OS_HTONS(0x6558)) {
+	hash64 = calc_hash(&pkt->l4_payload, sizeof(ETHER_HDR), hash64);
+      } else {
+      }
     default:
       break;
   }
