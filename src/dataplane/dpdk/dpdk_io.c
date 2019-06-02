@@ -389,7 +389,9 @@ app_lcore_io_tx(struct app_lcore_params_io *lp,
           pkt = MBUF2PKT(m);
           if (unlikely(pkt->queue_id != 0)) {
             qidx = dpdk_interface_queue_id_to_index(ifp, pkt->queue_id);
-            color = rte_meter_trtcm_color_blind_check(&ifp->ifqueue.meters[qidx],
+            color = rte_meter_trtcm_color_blind_check(
+                   &ifp->ifqueue.meters[qidx],
+                   &ifp->ifqueue.param[qidx],
                     rte_rdtsc(),
                     OS_M_PKTLEN(m));
             rte_sched_port_pkt_write(m, 0, 0, 0, qidx, color);

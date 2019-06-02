@@ -28,7 +28,7 @@
 lagopus_result_t
 dpdk_interface_queue_add(struct interface *ifp, dp_queue_info_t *queue) {
   struct dp_ifqueue new_ifqueue;
-  struct rte_meter_trtcm_params param;
+  struct rte_meter_trtcm_params *param;
   int i;
 
   if (ifp->ifqueue.nqueue >= DP_MAX_QUEUES) {
@@ -41,11 +41,12 @@ dpdk_interface_queue_add(struct interface *ifp, dp_queue_info_t *queue) {
   }
   memcpy(&new_ifqueue, &ifp->ifqueue, sizeof(new_ifqueue));
   new_ifqueue.queues[new_ifqueue.nqueue] = queue;
-  param.cir = queue->committed_information_rate;
-  param.pir = queue->peak_information_rate;
-  param.cbs = queue->committed_burst_size;
-  param.pbs = queue->peak_burst_size;
-  rte_meter_trtcm_config(&new_ifqueue.meters[new_ifqueue.nqueue], &param);
+  param = &new_ifqueue.param[new_ifqueue.nqueue];
+  param->cir = queue->committed_information_rate;
+  param->pir = queue->peak_information_rate;
+  param->cbs = queue->committed_burst_size;
+  param->pbs = queue->peak_burst_size;
+  rte_meter_trtcm_config(&new_ifqueue.meters[new_ifqueue.nqueue], param);
   new_ifqueue.nqueue++;
   dpdk_queue_configure(ifp, &new_ifqueue);
   memcpy(&ifp->ifqueue, &new_ifqueue, sizeof(new_ifqueue));

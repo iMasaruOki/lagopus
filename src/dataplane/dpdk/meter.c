@@ -59,6 +59,7 @@ struct lagopus_band {
     struct rte_meter_srtcm kbps_meter;
     struct rte_meter_srtcm pps_meter;
   };
+  struct rte_meter_srtcm_params param;
 };
 
 TAILQ_HEAD(lagopus_band_list, lagopus_band);
@@ -88,7 +89,7 @@ static void
 dpdk_register_meter(struct meter *meter) {
   struct meter_band *band;
   struct lagopus_band_list *list;
-  struct rte_meter_srtcm_params param;
+  struct rte_meter_srtcm_params *param;
 
   DPRINT("registering meter, id=%d\n", meter->meter_id);
   list = calloc(1, sizeof(struct lagopus_band_list));
@@ -104,30 +105,31 @@ dpdk_register_meter(struct meter *meter) {
       return;
     }
     lband->band = band;
+    param = &lband->param;
     if ((meter->flags & OFPMF_PKTPS) == 0) {
       /* unit of rate is kbps, DPDK needs Bytes/sec */
       DPRINT("rate limit: %d kilo bit per second\n", band->rate);
-      param.cir = KBPS2BYTEPS(band->rate);
+      param->cir = KBPS2BYTEPS(band->rate);
       if ((meter->flags & OFPMF_BURST) != 0) {
-        param.ebs = KBPS2BYTEPS(band->burst_size);
-        param.cbs = KBPS2BYTEPS(band->rate);
+        param->ebs = KBPS2BYTEPS(band->burst_size);
+        param->cbs = KBPS2BYTEPS(band->rate);
       } else {
-        param.ebs = 0;
-        param.cbs = KBPS2BYTEPS(band->rate);
+        param->ebs = 0;
+        param->cbs = KBPS2BYTEPS(band->rate);
       }
-      rte_meter_srtcm_config(&lband->kbps_meter, &param);
+      rte_meter_srtcm_config(&lband->kbps_meter, param);
     } else {
       /* unit of rate is pps */
       DPRINT("rate limit: %d packet per second\n", band->rate);
-      param.cir = band->rate;
+      param->cir = band->rate;
       if ((meter->flags & OFPMF_BURST) != 0) {
-        param.ebs = band->burst_size;
-        param.cbs = band->rate;
+        param->ebs = band->burst_size;
+        param->cbs = band->rate;
       } else {
-        param.ebs = 0;
-        param.cbs = band->rate;
+        param->ebs = 0;
+        param->cbs = band->rate;
       }
-      rte_meter_srtcm_config(&lband->pps_meter, &param);
+      rte_meter_srtcm_config(&lband->pps_meter, param);
     }
     TAILQ_INSERT_TAIL(list, lband, next);
   }
@@ -156,8 +158,9 @@ lagopus_meter_packet(struct lagopus_packet *pkt, struct meter *meter,
   if ((meter->flags & OFPMF_PKTPS) == 0) {
     TAILQ_FOREACH(lband, list, next) {
       color = rte_meter_srtcm_color_blind_check(&lband->kbps_meter,
-                                                rte_rdtsc(),
-                                                OS_M_PKTLEN(PKT2MBUF(pkt)));
+              &lband->param,
+              rte_rdtsc(),
+              OS_M_PKTLEN(PKT2MBUF(pkt)));
       if (color_band == NULL && color == e_RTE_METER_RED) {
         color_band = lband;
       }
@@ -165,6 +168,7 @@ lagopus_meter_packet(struct lagopus_packet *pkt, struct meter *meter,
   } else {
     TAILQ_FOREACH(lband, list, next) {
       color = rte_meter_srtcm_color_blind_check(&lband->pps_meter,
+              &lband->param,
               rte_rdtsc(),
               1);
       if (color_band == NULL && color == e_RTE_METER_RED) {
