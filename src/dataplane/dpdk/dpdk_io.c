@@ -781,7 +781,11 @@ dpdk_configure_interface(struct interface *ifp) {
     name = dpdk_remove_namespace(ifp->info.eth_dpdk_phy.device);
     actual_portid = dpdk_get_detachable_portid_by_name(name);
     if (actual_portid == RTE_MAX_ETHPORTS) {
-      if (rte_eth_dev_attach(name, &actual_portid)) {
+      if (rte_dev_probe(name)) {
+        return LAGOPUS_RESULT_NOT_FOUND;
+      }
+      actual_portid = dpdk_get_detachable_portid_by_name(name);
+      if (actual_portid == RTE_MAX_ETHPORTS) {
         return LAGOPUS_RESULT_NOT_FOUND;
       }
     }
@@ -998,7 +1002,7 @@ dpdk_unconfigure_interface(struct interface *ifp) {
     char detached_devname[RTE_ETH_NAME_MAX_LEN];
 
     rte_eth_dev_close(portid);
-    rte_eth_dev_detach(portid, detached_devname);
+    rte_dev_remove(rte_eth_devices[portid].device);
   }
   dpdk_interface_unset_index(ifp);
   return LAGOPUS_RESULT_OK;
