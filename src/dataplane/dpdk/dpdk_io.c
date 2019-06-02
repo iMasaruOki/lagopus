@@ -164,19 +164,13 @@ static unsigned long lagopus_port_mask = 0;
 
 static struct rte_eth_conf port_conf = {
   .rxmode = {
-    .split_hdr_size = 0,
-    .header_split   = 0, /**< Header Split disabled */
-    .hw_ip_checksum = 0, /**< IP checksum offload enabled */
-    .hw_vlan_filter = 0, /**< VLAN filtering disabled */
-    .hw_vlan_strip  = 0, /**< VLAN strip disabled */
-    .hw_vlan_extend = 0, /**< Extended VLAN disabled */
+    .offloads = 
 #if MAX_PACKET_SZ > 2048
-    .jumbo_frame    = 1, /**< Jumbo Frame Support enabled */
+    DEV_RX_OFFLOAD_JUMBO_FRAME,
     .max_rx_pkt_len = 9000, /**< Max RX packet length */
 #else
-    .jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
+    0,
 #endif /* MAX_PACKET_SZ */
-    .hw_strip_crc   = 0, /**< CRC stripped by hardware */
   },
   .rx_adv_conf = {
     .rss_conf = {
